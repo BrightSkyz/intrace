@@ -15,14 +15,6 @@
 		"-oControlMaster=auto",
 		"-oControlPersist=yes"
 	],
-	"limiter": {
-		"windowMs": 3600000,
-		"max": 1000,
-		"delayAfter": 500,
-		"delayMs": 100,
-		"whitelist": ['127.0.0.1'],
-		"blacklist": []
-	},
 	"queue": {
 		"probe": 5,
 		"websocket": 20,
@@ -31,8 +23,8 @@
 	"logs": {
 		"status": true,
 		"requests": {
-			"http": true,
-			"websocket": true
+			"http": false,
+			"websocket": false
 		},
 		"use_x_forwarded_for": true,
 		"debug": true

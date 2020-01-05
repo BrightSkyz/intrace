@@ -10,8 +10,6 @@ var express       = require('express');
 var socketio      = require('socket.io');
 var crc32         = require('crc-32');
 var bases         = require('bases');
-var RateLimiter   = require('express-rate-limit');
-
 
 var app = express();
 app.enable('trust proxy', '0.0.0.0/0');
@@ -65,23 +63,6 @@ cvalid('private.json->http',                      config.http,                  
 cvalid('private.json->http->host',                config.http.host,                'string');
 cvalid('private.json->http->port',                config.http.port,                'uint'  );
 cvalid('private.json->logs->debug',               config.logs.debug,               'bool'  );
-cvalid('private.json->limiter',                   config.limiter,                  'object');
-cvalid('private.json->limiter->windowMs',         config.limiter.windowMs,         'uint'  );
-cvalid('private.json->limiter->max',              config.limiter.max,              'uint'  );
-cvalid('private.json->limiter->delayAfter',       config.limiter.delayAfter,       'uint'  );
-cvalid('private.json->limiter->delayMs',          config.limiter.delayMs,          'uint'  );
-cvalid('private.json->limiter->whitelist',        config.limiter.whitelist,        'array' );
-cvalid('private.json->limiter->blacklist',        config.limiter.blacklist,        'array' );
-
-var limiter = new RateLimiter({
-	windowMs: config.limiter.windowMs,
-	max: config.limiter.max,
-	delayAfter: config.limiter.delayAfter,
-	delayMs: config.limiter.delayMs,
-	skip: function (req, res) {
-		return config.limiter.whitelist.indexOf(req.ip.substr(0, 7) === '::ffff:' ? req.ip.substr(7) : req.ip) !== -1;
-	}
-});
 
 var shutdown = false;
 
@@ -230,43 +211,6 @@ require('./config/probes.json').forEach(function (host) {
 
 app.use(function(req, res, next) {
 	var headers = {
-		'Content-Security-Policy': [
-			"default-src 'none'",
-			"script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"object-src 'none'",
-			"style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"img-src 'self'",
-			"media-src 'none'",
-			"frame-src 'none'",
-			"frame-ancestors 'none'",
-			"font-src 'self' https://cdnjs.cloudflare.com/",
-			"connect-src 'self' wss://" + req.headers.orig_host || req.headers.host || ''
-		].join('; '),
-		'X-Content-Security-Policy': [
-			"default-src 'none'",
-			"script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"object-src 'none'",
-			"style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"img-src 'self'",
-			"media-src 'none'",
-			"frame-src 'none'",
-			"frame-ancestors 'none'",
-			"font-src 'self' https://cdnjs.cloudflare.com/",
-			"connect-src 'self' wss://" + req.headers.orig_host || req.headers.host || ''
-		].join('; '),
-		'X-WebKit-CSP': [
-			"default-src 'none'",
-			"script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"object-src 'none'",
-			"style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com/",
-			"img-src 'self'",
-			"media-src 'none'",
-			"frame-src 'none'",
-			"frame-ancestors 'none'",
-			"font-src 'self' https://cdnjs.cloudflare.com/",
-			"connect-src 'self' wss://" + req.headers.orig_host || req.headers.host || ''
-		].join('; '),
-		'Strict-Transport-Security': 'max-age=31536000',
 		'X-XSS-Protection': '1; mode=block',
 		'X-Frame-Options': 'SAMEORIGIN',
 		'Referrer-Policy': 'no-referrer'
@@ -316,11 +260,8 @@ app.get('/caps.json', function (req, res) {
 	res.end(JSON.stringify(caps));
 });
 
-app.get(/^\/([a-zA-Z0-9]{4})\/([a-z]+)\/([0-9a-f:\.]{1,39})$/, limiter, function (req, res) {
+app.get(/^\/([a-zA-Z0-9]{4})\/([a-z]+)\/([0-9a-f:\.]{1,39})$/, function (req, res) {
 	res.setHeader('Content-Type', 'text/plain');
-	if (config.limiter.blacklist.indexOf(req.ip.substr(0, 7) === '::ffff:' ? req.ip.substr(7) : req.ip) !== -1) {
-		return res.status(403) + res.end('403 Access Denied');
-	}
 	var query = {
 		probe: req.params[0],
 		type: req.params[1],
