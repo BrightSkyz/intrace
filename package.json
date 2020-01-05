@@ -23,7 +23,9 @@
 		"express": "*",
 		"socket.io": "*",
 		"bases": "*",
-		"crc-32": "*"
+		"crc-32": "*",
+        "bufferutil": "^4.0.1",
+        "utf-8-validate": "^5.0.2"
 	},
 	"keywords": [
 		"looking",
